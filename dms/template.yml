@@ -5,6 +5,15 @@ Description: >-
   automated serverless way to run DMS tasks for data migration
 
 Parameters:
+  Keyword:
+    Description: Enter the keyword, such as move-data-from-xxx, should enter xxx only
+    Type: String
+
+  ExistingDmsReplicationTaskName:
+    Type: String
+    Default: move-data-from-agent-feedback
+    Description: Existing replication task name
+
   UseExistingReplicationTask:
     Default: "yes"
     Type: String
@@ -50,10 +59,6 @@ Parameters:
     Default: "cron(0 1 * * ? *)"
     Description: Enter the schedule in cron format to schedule the migration
     Type: String
-  ExistingDmsReplicationTaskName:
-    Type: String
-    Default: "eg: move-data-from-agent-feedback"
-    Description: Existing replication task name
 
 Rules:
   DMSTaskNamePresent:
@@ -149,7 +154,7 @@ Resources:
     Condition: ScheduledMigration
     Type: AWS::Events::Rule
     Properties:
-      Name: dmstask-scheduler-eventrule
+      Name: !Sub dmstask-scheduler-eventrule-${Keyword}
       Description: Cloudwatch event rule to trigger the Lambda function
       ScheduleExpression: !Ref CronSchedule
       State: "ENABLED"
@@ -161,7 +166,7 @@ Resources:
     Condition: ScheduledMigration
     Type: AWS::IAM::Role
     Properties:
-      RoleName: dataprocess-eventenable-lambda-role
+      RoleName: !Sub dataprocess-eventenable-lambda-role-${Keyword}
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -199,7 +204,7 @@ Resources:
                         !Ref "AWS::Region",
                         ":",
                         !Ref "AWS::AccountId",
-                        ":rule/dmstask-scheduler-eventrule",
+                        !Sub ":rule/dmstask-scheduler-eventrule-${Keyword}",
                       ],
                     ]
 
@@ -207,11 +212,11 @@ Resources:
     Condition: ScheduledMigration
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: dataprocess-eventenable-lambda
+      FunctionName: !Sub dataprocess-eventenable-lambda-${Keyword}
       Handler: index.handler
       Environment:
         Variables:
-          dmstaskschedulereventrule: dmstask-scheduler-eventrule
+          dmstaskschedulereventrule: !Sub dmstask-scheduler-eventrule-${Keyword}
       Runtime: python3.6
       Description: This function enables cloudwatch rule
       MemorySize: 128
@@ -251,7 +256,7 @@ Resources:
   resDmsTaskStarterLambdaRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: dms-task-starter-lambda-role
+      RoleName: !Sub dms-task-starter-lambda-role-${Keyword}
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -298,21 +303,21 @@ Resources:
                         !Ref "AWS::Region",
                         ":",
                         !Ref "AWS::AccountId",
-                        ":rule/dmstask-scheduler-eventrule",
+                        !Sub ":rule/dmstask-scheduler-eventrule-${Keyword}",
                       ],
                     ]
 
   resDmsTaskStarterLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: dms-task-starter-lambda
+      FunctionName: !Sub dms-task-starter-lambda-${Keyword}
       Handler: index.handler
       Environment:
         Variables:
           dmstaskschedulereventrule:
             !If [
               ScheduledMigration,
-              "dmstask-scheduler-eventrule",
+              !Sub "dmstask-scheduler-eventrule-${Keyword}",
               !Ref "AWS::NoValue",
             ]
           dmstaskname:
@@ -437,7 +442,7 @@ Resources:
     Condition: ScheduledMigration
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: dms-task-statechange-topic
+      TopicName: !Sub dms-task-statechange-topic-${Keyword}
       Subscription:
         - Endpoint: !GetAtt resDataProcessEventEnableLambda.Arn
           Protocol: "lambda"
@@ -446,7 +451,7 @@ Resources:
     Condition: ScheduledMigration
     Type: AWS::DMS::EventSubscription
     Properties:
-      SubscriptionName: dmstasksubscription
+      SubscriptionName: !Sub dmstasksubscription-${Keyword}
       Enabled: true
       SourceType: replication-task
       EventCategories:
