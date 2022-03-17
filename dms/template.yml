@@ -11,7 +11,6 @@ Parameters:
 
   ExistingDmsReplicationTaskName:
     Type: String
-    Default: move-data-from-agent-feedback
     Description: Existing replication task name
 
   UseExistingReplicationTask:
@@ -21,6 +20,7 @@ Parameters:
     AllowedValues:
       - "yes"
       - "no"
+
   MigrationRefreshIndicator:
     Description: Please choose between migration and refresh options
     Default: data-migration
@@ -28,6 +28,7 @@ Parameters:
       - data-migration
       - data-refresh
     Type: String
+
   MigrationRefreshType:
     Description: Please choose type of migration / refresh (must match with that of replication task)
     Default: full-load
@@ -36,6 +37,7 @@ Parameters:
       #- full-load-and-cdc
       #- cdc
     Type: String
+
   StartReplicationTaskType:
     Type: String
     Description: The type of replication task
@@ -44,10 +46,12 @@ Parameters:
       #- resume-processing
       - reload-target
     Default: reload-target
+
   CdcStartTime:
     Type: String
     Description: Indicates the start time for a change data capture (CDC) operation, for example - '1999-01-30T12:12:12'
     Default: ""
+
   ScheduleOrOneTime:
     Default: schedule
     Description: Please choose between one-time migration refresh or scheduled
@@ -55,8 +59,9 @@ Parameters:
       - one-time
       - schedule
     Type: String
+
   CronSchedule:
-    Default: "cron(0 1 * * ? *)"
+    Default: "cron(0 0 * * ? *)"
     Description: Enter the schedule in cron format to schedule the migration
     Type: String
 
@@ -70,6 +75,7 @@ Rules:
                 - Ref: ExistingDmsReplicationTaskName
                 - ""
         AssertDescription: Replication Task name must be specified if UseExistingReplicationTask is chosen as yes
+
   OneTimeFullLoad:
     RuleCondition: !Equals [!Ref ScheduleOrOneTime, "schedule"]
     Assertions:
@@ -85,6 +91,7 @@ Rules:
                 - Ref: MigrationRefreshType
                 - "cdc"
         AssertDescription: MigrationRefreshType must not be cdc if ScheduleOrOneTime is chosen to be schedule
+
   DataRefreshFullLoad:
     RuleCondition: !Equals [!Ref MigrationRefreshIndicator, "data-refresh"]
     Assertions:
@@ -93,6 +100,7 @@ Rules:
             - Ref: MigrationRefreshType
             - "full-load"
         AssertDescription: MigrationRefreshType must be full-load if MigrationRefreshIndicator is chosen to be data-refresh
+
   FullLoadAndCdcOneTime:
     RuleCondition: !Equals [!Ref MigrationRefreshType, "full-load-and-cdc"]
     Assertions:
@@ -107,6 +115,7 @@ Rules:
                 - Ref: CdcStartTime
                 - ""
         AssertDescription: CdcStartTime must be non-empty if MigrationRefreshType is chosen to be full-load-and-cdc
+
   CdcOneTime:
     RuleCondition: !Equals [!Ref MigrationRefreshType, "cdc"]
     Assertions:
@@ -468,19 +477,23 @@ Outputs:
   StackName:
     Description: Stack name
     Value: !Ref "AWS::StackName"
+
   CloudWatchEventRule:
     Condition: ScheduledMigration
     Description: Cloudwatch event rule which schedules the data migrtion/refresh
     Value: !Ref resDMSTaskSchedulerEventRule
+
   SnsTopicName:
     Condition: ScheduledMigration
     Description: SNS Topic subscribed to AWS DMS events
     Value: !GetAtt
       - resSnsTopicForDms
       - TopicName
+
   TaskStarterLambda:
     Description: Lambda function which triggers the DMS task
     Value: !Ref resDmsTaskStarterLambda
+
   PostProcessorLambda:
     Condition: ScheduledMigration
     Description: Lambda function which performs the post processing data activities
